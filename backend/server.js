@@ -40,7 +40,7 @@ app.use("/api", reviewRoutes);
 app.use("/api", contactRoutes);
 
 app.get("/", (req, res) => {
-  res.json({ success: true, data: "Rogue Rider Gear API is running" });
+  res.json({ success: true, data: "yexon impex API is running" });
 });
 
 app.use(notFound);
