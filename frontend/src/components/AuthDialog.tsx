@@ -20,6 +20,35 @@ type AuthDialogProps = {
   defaultMode?: AuthMode;
 };
 
+const formatAuthError = (err: unknown) => {
+  const fallback = "Something went wrong. Please try again.";
+  const message = err instanceof Error ? err.message : fallback;
+
+  if (message.includes("auth/email-already-in-use")) {
+    return "This email is already registered. Please sign in.";
+  }
+  if (message.includes("auth/invalid-credential") || message.includes("auth/wrong-password")) {
+    return "Invalid email or password.";
+  }
+  if (message.includes("auth/user-not-found")) {
+    return "No account found with this email.";
+  }
+  if (message.includes("auth/invalid-email")) {
+    return "Please enter a valid email address.";
+  }
+  if (message.includes("auth/weak-password")) {
+    return "Password should be at least 6 characters.";
+  }
+  if (message.includes("auth/too-many-requests")) {
+    return "Too many attempts. Please try again later.";
+  }
+  if (message.includes("auth/network-request-failed")) {
+    return "Network error. Please check your connection.";
+  }
+
+  return message.replace(/^Firebase:\s*/i, "").replace(/\s*\(auth\/[^)]+\)\.?/i, "").trim() || fallback;
+};
+
 export const AuthDialog = ({
   open,
   onOpenChange,
@@ -78,16 +107,14 @@ export const AuthDialog = ({
       }
 
       await signUp(email, password, displayName || undefined);
-      setNotice("Please verify your email first, then sign in. Firebase has sent a verification link to your inbox.");
       setMode("signin");
       setPassword("");
       setConfirmPassword("");
       setShowPassword(false);
       setShowConfirmPassword(false);
+      window.alert("before sign in please verify your mail check your mail box");
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "An error occurred. Try again.";
-      setError(message);
+      setError(formatAuthError(err));
     } finally {
       setLoading(false);
     }
@@ -107,9 +134,7 @@ export const AuthDialog = ({
       await resetPassword(email.trim());
       setNotice("Password reset email sent. Please check your inbox.");
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Could not send password reset email.";
-      setError(message);
+      setError(formatAuthError(err));
     } finally {
       setLoading(false);
     }
