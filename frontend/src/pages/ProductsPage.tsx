@@ -176,10 +176,7 @@ const ProductsPage = () => {
                 <h3 className="text-sm font-bold uppercase text-foreground mb-2">
                   {product.name}
                 </h3>
-                <div className="flex items-center justify-between">
-                  <span className="text-lg font-black text-foreground">
-                    ${product.price}
-                  </span>
+                <div className="flex items-center justify-end">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

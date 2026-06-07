@@ -13,6 +13,7 @@ import {
   onAuthStateChanged,
   updateProfile,
   sendEmailVerification,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -21,6 +22,7 @@ type AuthContextType = {
   loading: boolean;
   signUp: (email: string, password: string, displayName?: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logOut: () => Promise<void>;
 };
 
@@ -67,12 +69,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    if (!auth) throw new Error("Firebase not configured. Add .env with Firebase credentials.");
+    await sendPasswordResetEmail(auth, email);
+  };
+
   const logOut = async () => {
     if (auth) await signOut(auth);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, logOut }}>
+    <AuthContext.Provider value={{ user, loading, signUp, signIn, resetPassword, logOut }}>
       {children}
     </AuthContext.Provider>
   );

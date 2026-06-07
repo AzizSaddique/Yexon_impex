@@ -295,9 +295,6 @@ const ProductDetailPage = () => {
             </p>
 
             <div className="flex items-center gap-6 mb-8">
-              <span className="text-3xl font-black text-foreground">
-                ${product.price}
-              </span>
               <div className="flex items-center gap-3">
                 <button
                   onClick={handleAddToWishlist}
@@ -582,9 +579,6 @@ const ProductDetailPage = () => {
                     <h3 className="text-xs font-bold uppercase text-foreground mb-1 line-clamp-2">
                       {item.name}
                     </h3>
-                    <span className="text-sm font-black text-foreground">
-                      ${item.price}
-                    </span>
                   </div>
                 </div>
               ))}
