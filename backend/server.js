@@ -10,11 +10,18 @@ const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 
 const app = express();
 
+const frontendUrls = (process.env.FRONTEND_URL || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
-  process.env.FRONTEND_URL,
-].filter(Boolean);
+  "https://yexonimpex.store",
+  "https://www.yexonimpex.store",
+  ...frontendUrls,
+];
 
 app.use(
   cors({
