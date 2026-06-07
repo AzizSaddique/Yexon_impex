@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Heart, ShoppingCart } from "lucide-react";
+import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { products, getProductsByCategory, type Product } from "@/data/products";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { getJson, postJson } from "@/lib/api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,10 +21,37 @@ type ReviewResponse = {
   }>;
 };
 
+type DisplayReview = {
+  _id: string;
+  rating: number;
+  reviewText: string;
+  userName: string;
+  createdAt: string;
+};
+
+const defaultReviews: DisplayReview[] = [
+  {
+    _id: "default-review-1",
+    rating: 5,
+    reviewText: "Excellent quality and stitching. The product feels premium and comfortable.",
+    userName: "Verified Customer",
+    createdAt: "2026-01-12T00:00:00.000Z",
+  },
+  {
+    _id: "default-review-2",
+    rating: 5,
+    reviewText: "Great fit, fast response, and exactly what I expected. Highly recommended.",
+    userName: "Happy Buyer",
+    createdAt: "2026-02-08T00:00:00.000Z",
+  },
+];
+
 const ProductDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { addToCart, addToWishlist, isInCart, isInWishlist } = useApp();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const productId = Number(id);
@@ -43,6 +72,7 @@ const ProductDetailPage = () => {
   );
 
   const isValidProduct = Boolean(product && !Number.isNaN(productId));
+  const isVerifiedUser = Boolean(user?.emailVerified);
 
   useEffect(() => {
     if (!isValidProduct) {
@@ -52,6 +82,13 @@ const ProductDetailPage = () => {
       return () => clearTimeout(timer);
     }
   }, [isValidProduct, navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    setReviewName(user.displayName || "");
+    setReviewEmail(user.email || "");
+  }, [user]);
 
   const related: Product[] = useMemo(() => {
     if (!product) return [];
@@ -95,6 +132,33 @@ const ProductDetailPage = () => {
     },
   });
 
+  const displayedReviews: DisplayReview[] = useMemo(
+    () => [...defaultReviews, ...(reviewsResponse?.data || [])],
+    [reviewsResponse?.data]
+  );
+
+  const requireVerifiedAuth = (action: string) => {
+    if (isVerifiedUser) return true;
+
+    toast({
+      title: "Sign in required",
+      description: `Please sign in with a verified Gmail account before you ${action}.`,
+      variant: "destructive",
+    });
+    navigate("/login", { state: { from: location.pathname } });
+    return false;
+  };
+
+  const handleAddToCart = () => {
+    if (!product || !requireVerifiedAuth("add products to cart")) return;
+    addToCart(product);
+  };
+
+  const handleAddToWishlist = () => {
+    if (!product || !requireVerifiedAuth("add products to wishlist")) return;
+    addToWishlist(product);
+  };
+
   const contactMutation = useMutation({
     mutationFn: () =>
       postJson("/api/contact", {
@@ -106,6 +170,8 @@ const ProductDetailPage = () => {
 
   const handleSubmitReview = async () => {
     if (!product) return;
+
+    if (!requireVerifiedAuth("submit a review")) return;
 
     if (!reviewName.trim() || !reviewEmail.trim() || !reviewText.trim()) {
       toast({
@@ -168,6 +234,7 @@ const ProductDetailPage = () => {
   if (!isValidProduct) {
     return (
       <div className="min-h-screen bg-background">
+        <Navbar />
         <div className="container mx-auto px-4 pt-24 pb-20">
           <button
             onClick={() => navigate("/products")}
@@ -188,6 +255,7 @@ const ProductDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Navbar />
       <div className="container mx-auto px-4 pt-24 pb-20">
         <button
           onClick={() => navigate(-1)}
@@ -232,7 +300,7 @@ const ProductDetailPage = () => {
               </span>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => addToWishlist(product)}
+                  onClick={handleAddToWishlist}
                   className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
                 >
                   <Heart
@@ -248,7 +316,7 @@ const ProductDetailPage = () => {
             </div>
 
             <button
-              onClick={() => addToCart(product)}
+              onClick={handleAddToCart}
               disabled={isInCart(product.id)}
               className={`inline-flex items-center gap-3 px-8 py-3 text-sm font-bold uppercase tracking-wider transition-colors ${
                 isInCart(product.id)
@@ -341,6 +409,7 @@ const ProductDetailPage = () => {
                     className="w-full border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                     value={reviewName}
                     onChange={(e) => setReviewName(e.target.value)}
+                    readOnly={isVerifiedUser}
                   />
                 </div>
                 <div>
@@ -352,6 +421,7 @@ const ProductDetailPage = () => {
                     className="w-full border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                     value={reviewEmail}
                     onChange={(e) => setReviewEmail(e.target.value)}
+                    readOnly={isVerifiedUser}
                   />
                 </div>
               </div>
@@ -378,8 +448,8 @@ const ProductDetailPage = () => {
               <p className="text-sm text-destructive mt-6">Could not load reviews.</p>
             ) : (
               <div className="space-y-4 mt-6">
-                {reviewsResponse?.data?.length ? (
-                  reviewsResponse.data.map((review) => (
+                {displayedReviews.length ? (
+                  displayedReviews.map((review) => (
                     <div
                       key={review._id}
                       className="rounded-md border border-border bg-card p-4"
@@ -433,11 +503,11 @@ const ProductDetailPage = () => {
             <div className="space-y-2 text-sm text-muted-foreground mb-8">
               <p>
                 <span className="font-semibold text-foreground">Phone:</span>{" "}
-                +92 300 000 0000
+                +92 3341 740 951
               </p>
               <p>
                 <span className="font-semibold text-foreground">Email:</span>{" "}
-                info@rogueridergear.com
+                yexonimpex@gmail.com
               </p>
             </div>
             <h3 className="text-sm font-semibold uppercase text-foreground mb-2">

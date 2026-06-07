@@ -7,13 +7,19 @@ import {
   getProductsByFilter,
   getSubcategoriesForCategory,
 } from "@/data/products";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const ProductsPage = () => {
   const { selectedCategory, addToCart, addToWishlist, isInCart, isInWishlist } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const isVerifiedUser = Boolean(user?.emailVerified);
   const selectedParentCategory = selectedCategory
     ? findParentCategory(selectedCategory) ?? selectedCategory
     : null;
@@ -52,6 +58,18 @@ const ProductsPage = () => {
   const handleBack = () => {
     navigate("/");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const requireVerifiedAuth = (action: string) => {
+    if (isVerifiedUser) return true;
+
+    toast({
+      title: "Sign in required",
+      description: `Please sign in with a verified Gmail account before you ${action}.`,
+      variant: "destructive",
+    });
+    navigate("/login", { state: { from: location.pathname } });
+    return false;
   };
 
   const heading = activeType ?? selectedParentCategory ?? "All Products";
@@ -135,6 +153,7 @@ const ProductsPage = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (!requireVerifiedAuth("add products to wishlist")) return;
                     addToWishlist(product);
                   }}
                   className="absolute top-3 right-3 w-9 h-9 bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-primary transition-colors"
@@ -164,6 +183,7 @@ const ProductsPage = () => {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (!requireVerifiedAuth("add products to cart")) return;
                       addToCart(product);
                     }}
                     disabled={isInCart(product.id)}

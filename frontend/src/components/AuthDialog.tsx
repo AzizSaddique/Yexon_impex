@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -25,23 +25,25 @@ export const AuthDialog = ({
   defaultMode = "signin",
 }: AuthDialogProps) => {
   const [mode, setMode] = useState<AuthMode>(defaultMode);
-
-  useEffect(() => {
-    if (open) setMode(defaultMode);
-  }, [open, defaultMode]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
 
   const { signIn, signUp } = useAuth();
+
+  useEffect(() => {
+    if (open) setMode(defaultMode);
+  }, [open, defaultMode]);
 
   const reset = () => {
     setEmail("");
     setPassword("");
     setDisplayName("");
     setError("");
+    setNotice("");
     setLoading(false);
   };
 
@@ -53,14 +55,20 @@ export const AuthDialog = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setNotice("");
     setLoading(true);
+
     try {
       if (mode === "signin") {
         await signIn(email, password);
-      } else {
-        await signUp(email, password, displayName || undefined);
+        handleClose(false);
+        return;
       }
-      handleClose(false);
+
+      await signUp(email, password, displayName || undefined);
+      setNotice("Verification email sent. Please check your Gmail inbox, verify your email, then sign in.");
+      setMode("signin");
+      setPassword("");
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "An error occurred. Try again.";
@@ -73,19 +81,20 @@ export const AuthDialog = ({
   const switchMode = () => {
     setMode((m) => (m === "signin" ? "signup" : "signin"));
     setError("");
+    setNotice("");
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="uppercase tracking-wide">
             {mode === "signin" ? "Sign In" : "Sign Up"}
           </DialogTitle>
           <DialogDescription>
             {mode === "signin"
-              ? "Enter your email and password to access your account."
-              : "Create an account to save wishlists and track orders."}
+              ? "Enter your verified email and password to access your account."
+              : "Create an account. Firebase will send a verification email before you can sign in."}
           </DialogDescription>
         </DialogHeader>
 
@@ -121,15 +130,21 @@ export const AuthDialog = ({
             <Input
               id="password"
               type="password"
-              placeholder="••••••••"
+              placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
 
+          {notice && (
+            <p className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-foreground">
+              {notice}
+            </p>
+          )}
+
           {error && (
-            <p className="text-sm text-destructive font-medium">{error}</p>
+            <p className="text-sm font-medium text-destructive">{error}</p>
           )}
 
           <Button
@@ -145,12 +160,12 @@ export const AuthDialog = ({
           </Button>
         </form>
 
-        <p className="text-sm text-muted-foreground text-center">
+        <p className="text-center text-sm text-muted-foreground">
           {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
           <button
             type="button"
             onClick={switchMode}
-            className="text-primary font-semibold hover:underline"
+            className="font-semibold text-primary hover:underline"
           >
             {mode === "signin" ? "Sign Up" : "Sign In"}
           </button>

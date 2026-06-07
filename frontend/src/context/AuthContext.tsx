@@ -12,6 +12,7 @@ import {
   signOut,
   onAuthStateChanged,
   updateProfile,
+  sendEmailVerification,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -51,11 +52,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (displayName && cred.user) {
       await updateProfile(cred.user, { displayName });
     }
+    await sendEmailVerification(cred.user);
+    await signOut(auth);
   };
 
   const signIn = async (email: string, password: string) => {
     if (!auth) throw new Error("Firebase not configured. Add .env with Firebase credentials.");
-    await signInWithEmailAndPassword(auth, email, password);
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    await cred.user.reload();
+
+    if (!cred.user.emailVerified) {
+      await signOut(auth);
+      throw new Error("Please verify your email before signing in. Check your Gmail inbox.");
+    }
   };
 
   const logOut = async () => {

@@ -2,13 +2,19 @@ import { useState } from "react";
 import { Heart, ShoppingCart } from "lucide-react";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 import { useApp } from "@/context/AppContext";
+import { useAuth } from "@/context/AuthContext";
 import { products } from "@/data/products";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 const NewArrivalsSection = () => {
   const { addToCart, addToWishlist, isInCart, isInWishlist } = useApp();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const { ref, isVisible } = useScrollAnimation();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isVerifiedUser = Boolean(user?.emailVerified);
 
   // Paginate products, showing newest (isNew) items first
   const [currentPage, setCurrentPage] = useState(1);
@@ -36,6 +42,18 @@ const NewArrivalsSection = () => {
   const handleProductClick = (id: number) => {
     navigate(`/products/${id}`);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const requireVerifiedAuth = (action: string) => {
+    if (isVerifiedUser) return true;
+
+    toast({
+      title: "Sign in required",
+      description: `Please sign in with a verified Gmail account before you ${action}.`,
+      variant: "destructive",
+    });
+    navigate("/login", { state: { from: location.pathname } });
+    return false;
   };
 
   return (
@@ -73,6 +91,7 @@ const NewArrivalsSection = () => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (!requireVerifiedAuth("add products to wishlist")) return;
                     addToWishlist(product);
                   }}
                   className="absolute top-3 right-3 w-9 h-9 bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-primary transition-colors"
@@ -102,6 +121,7 @@ const NewArrivalsSection = () => {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (!requireVerifiedAuth("add products to cart")) return;
                       addToCart(product);
                     }}
                     disabled={isInCart(product.id)}
